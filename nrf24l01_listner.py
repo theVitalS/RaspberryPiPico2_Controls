@@ -29,25 +29,43 @@ def set_output_pin(index):
         pin.value(1 if i == index else 0)  # Set only the specified pin HIGH
 
 
+def get_signal(to_print=False):
+    while True:
+        if nrf.any():  # Check if data is available
+            try:
+                msg = nrf.recv()  # Receive the message
+                if to_print:
+                    print("Received raw message:", msg)
+
+                # Decode and strip null bytes
+                message = msg.decode().strip('\x00')
+                if not message:  # Ignore empty messages
+                    if to_print:
+                        print("Empty or invalid message received!")
+                    return -1
+
+                signal = int(message)  # Convert to integer
+                if to_print:
+                    print(f"Received signal: {signal}")
+
+                return signal
+            except (ValueError, OSError) as e:
+                if to_print:
+                    print("Invalid message or error:", e)
+        else:
+            #print('waiting')
+            utime.sleep(0.01)  # Short delay to avoid excessive polling
+
+
+start = utime.ticks_ms()  # Time message is received
+print(get_signal())
+end = utime.ticks_ms()  # Time message is received
+print(f'Time diff: {utime.ticks_diff(end, start)}')
+
+
 while True:
-    if nrf.any():  # Check if data is available
-        try:
-            msg = nrf.recv()  # Receive the message
-            print("Received raw message:", msg)
+    start = utime.ticks_ms()  # Time message is received
+    get_signal()
+    end = utime.ticks_ms()  # Time message is received
+    print(f'Time diff: {utime.ticks_diff(end, start)}')
 
-            # Decode and strip null bytes
-            message = msg.decode().strip('\x00')
-            if not message:  # Ignore empty messages
-                print("Empty or invalid message received!")
-                continue
-
-            signal = int(message)  # Convert to integer
-            print(f"Received signal: {signal}")
-
-            if 0 <= signal <= 4:
-                set_output_pin(signal - 1 if signal > 0 else -1)  # Map 0 to LOW for all
-            else:
-                print("Invalid signal received, ignoring.")
-        except (ValueError, OSError) as e:
-            print("Invalid message or error:", e)
-    utime.sleep(0.1)  # Short delay to avoid excessive polling
