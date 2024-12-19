@@ -14,26 +14,26 @@ nrf.open_rx_pipe(1, b'1Node')  # Receiver address
 nrf.set_channel(76)  # Set RF communication channel
 nrf.start_listening()  # Start listening for messages
 
-# Initialize the onboard LED (GP25 on Raspberry Pi Pico)
-led = Pin(25, Pin.OUT)
+# Output pins for controlling voltage
+output_pins = [
+    Pin(2, Pin.OUT),  # GP2
+    Pin(3, Pin.OUT),  # GP3
+    Pin(4, Pin.OUT),  # GP4
+    Pin(5, Pin.OUT),  # GP5
+]
 
 
-def flash_led(times):
-    """Flash the onboard LED the given number of times."""
-    print(f"Flashing LED {times} times")
-    for _ in range(times):
-        led.value(1)  # Turn LED ON
-        utime.sleep(0.03)
-        led.value(0)  # Turn LED OFF
-        utime.sleep(0.03)
+def set_output_pin(index):
+    """Set the specified output pin HIGH, and all others LOW."""
+    for i, pin in enumerate(output_pins):
+        pin.value(1 if i == index else 0)  # Set only the specified pin HIGH
 
 
-print('start')
 while True:
     if nrf.any():  # Check if data is available
         try:
             msg = nrf.recv()  # Receive the message
-            # print("Received raw message:", msg)
+            print("Received raw message:", msg)
 
             # Decode and strip null bytes
             message = msg.decode().strip('\x00')
@@ -41,10 +41,13 @@ while True:
                 print("Empty or invalid message received!")
                 continue
 
-            flashes = int(message)  # Convert to integer
+            signal = int(message)  # Convert to integer
+            print(f"Received signal: {signal}")
 
-            flash_led(flashes)  # Flash the LED
+            if 0 <= signal <= 4:
+                set_output_pin(signal - 1 if signal > 0 else -1)  # Map 0 to LOW for all
+            else:
+                print("Invalid signal received, ignoring.")
         except (ValueError, OSError) as e:
             print("Invalid message or error:", e)
-    utime.sleep(0.01)  # Short delay to avoid excessive polling
-
+    utime.sleep(0.1)  # Short delay to avoid excessive polling

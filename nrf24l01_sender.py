@@ -14,18 +14,34 @@ nrf.open_rx_pipe(1, b'2Node')                 # Receiver address
 nrf.stop_listening()                          # Ensure it's in TX mode
 nrf.set_channel(76)                           # Set RF communication channel
 
-def send_flashes(number):
-    """Send the number of flashes to the receiver."""
-    message = f"{number}"  # Convert number to string
+# Input pins for reading voltages
+input_pins = [
+    Pin(2, Pin.IN, Pin.PULL_DOWN),  # GP2
+    Pin(3, Pin.IN, Pin.PULL_DOWN),  # GP3
+    Pin(4, Pin.IN, Pin.PULL_DOWN),  # GP4
+    Pin(5, Pin.IN, Pin.PULL_DOWN),  # GP5
+]
+
+def read_input_pins():
+    """Read input pins and return a number based on their states."""
+    for i, pin in enumerate(input_pins, start=1):  # Check pins 1 to 4
+        if pin.value():  # If HIGH (voltage detected)
+            return i
+    return 0  # Default to 0 if no pins are HIGH
+
+def send_message(message):
+    """Send a message to the receiver."""
     try:
         print(f"Sending: {message}")
-        nrf.send(message.encode())  # Encode and send the message
-        print("Message sent successfully!")
-    except OSError:
-        print("Failed to send message!")
+        success = nrf.send(message.encode())  # Encode and send the message
+        if success:
+            print("Message sent successfully!")
+        else:
+            print("Message failed to send!")
+    except OSError as e:
+        print(f"Send failed! Error: {e}")
 
 while True:
-    for flashes in range(1, 6):  # Loop to send 1 to 5 flashes
-        send_flashes(flashes)
-        utime.sleep(2)  # Wait 5 seconds before sending the next message
-
+    number_to_send = read_input_pins()  # Determine the number to send
+    send_message(str(number_to_send))  # Convert to string and send
+    utime.sleep(0.5)  # Send messages every 500ms
