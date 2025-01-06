@@ -16,8 +16,8 @@ ENA.freq(1000)  # Set frequency to 1kHz
 ENB.freq(1000)
 
 # standard_speed = 50
-drag_factor = 1.25
-speed = 45
+drag_factor = 1.5
+speed = 85
 ENA.duty_u16(int(speed * 65535 / 100))
 ENB.duty_u16(int(speed * drag_factor * 65535 / 100))
 
@@ -139,6 +139,7 @@ def test3(x):
         stop()
         time.sleep(1)
         i += 1
+
 
 
 

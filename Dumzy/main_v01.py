@@ -3,13 +3,12 @@ import random
 import time
 from car import *
 from HC_SR04_distance_sensor import *
-from dumzy_listner import *
 
 stop()
 time.sleep(2)
 
 
-def auto(n=40, random_stops=False):
+def main(n=40, random_stops=False):
     reps = 0
     while reps < n:
 
@@ -50,22 +49,26 @@ def auto(n=40, random_stops=False):
         reps += 1
 
 
-def controled_movement():
+def disco():
+    freq = [2, 3]
     while True:
-        command = int(get_rc_command())
-        if command == 1:
-            move_forward()
-        elif command == 2:
-            move_backward()
-        elif command == 3:
-            turn_left(n=0.05)
-        elif command == 4:
-            turn_right(n=0.05)
-        else:
+        for f in freq:
+            turn_right(f)
             stop()
-        time.sleep(0.001)
+            time.sleep(0.3)
+            turn_left(f)
+            stop()
+            time.sleep(0.3)
 
 
-# auto()
-controled_movement()
+main()
+# hc_sr04_example_usage()
+
+
+
+
+
+
+
+
 
