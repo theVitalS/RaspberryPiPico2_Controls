@@ -51,11 +51,25 @@ def auto(n=40, random_stops=False):
 
 
 def controled_movement():
+    k = 0
+    nrf = initiate_nrf()
     while True:
-        command = int(get_rc_command())
-        if command == 1:
+        command = None
+        try:
+            command = get_rc_command(nrf)
+            #print(command)
+        except (ValueError, OSError) as e:
+            print(f"{str(time.timestemp())}: Invalid message or error {e}")
+            nrf = initiate_nrf()
+            k = 0
+        if command == None:
+            stop()
+            nrf = initiate_nrf()
+        elif command == 1:
+            set_speed(base_speed)
             move_forward()
         elif command == 2:
+            set_speed(base_speed)
             move_backward()
         elif command == 3:
             turn_left(n=0.05)
@@ -64,6 +78,10 @@ def controled_movement():
         else:
             stop()
         time.sleep(0.001)
+        k += 1
+        if k == 1000:
+            k = 0
+            nrf = initiate_nrf()
 
 
 # auto()
