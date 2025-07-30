@@ -45,51 +45,6 @@ def initiate_nrf(to_print=False, retries=50):
     return nrf
 
 
-def get_rc_command099(nrf):
-    k = 0
-    # print('Getting command')
-    while True:
-        # print('listening...')
-        if nrf.any():  # Check if data is available
-            try:
-                # print(f'{k=}')
-                k = 0
-
-                data = nrf.recv()  # Expecting a 2-byte payload
-                d1, d2 = data[0], data[1]
-                '''
-                msg = nrf.recv()  # Receive the message
-                #print("Received raw message:", msg)
-
-                # Decode and strip null bytes
-                message = msg.decode().strip('\x00')
-                if not message:  # Ignore empty messages
-                    #print("Empty or invalid message received!")
-                    raise ValueError("ValueError   ---    Empty or invalid message received!")
-                    #continue
-                '''
-                signal = d1  # int(message[0])  # Convert to integer
-                print(f"Received signal: {signal}")
-
-                if 0 <= signal <= 99:
-                    print(f'{signal=}')
-                    return signal
-                else:
-                    print("Invalid signal received, ignoring.")
-
-            except (ValueError, OSError) as e:
-                print("Invalid message or error:", e)
-        else:
-            k += 1
-            if k == 90:
-                print('command - none')
-                return None
-
-        #    print('...')
-
-        # utime.sleep(0.001)  # Short delay to avoid excessive polling
-
-
 def get_rc_command(nrf, timeout=40, to_print=True, delay=0.01):
     """
     Wait for a remote control command from the nRF module.
