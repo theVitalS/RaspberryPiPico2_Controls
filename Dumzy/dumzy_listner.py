@@ -2,87 +2,126 @@ from machine import Pin, SPI
 from nrf24l01 import NRF24L01
 import time
 import utime
+import machine
+import _thread
 
-#  nRF24L01 setup for sender
+# SPI and NRF24L01 setup
 ce = Pin(9, Pin.OUT)  # CE -> GP13
 csn = Pin(13, Pin.OUT)  # CSN -> GP14
 
-spi = SPI(1, #baudrate=5000000, polarity=0, phase=0,
-          sck=Pin(10), mosi=Pin(11), miso=Pin(12))
+spi = SPI(1, sck=Pin(10), mosi=Pin(11), miso=Pin(12))
 
-# Set CE and CSN to their default states
 ce.value(0)
 csn.value(1)
 
+class SignalReceiver:
+    def __init__(self, timeout=600, retries=3, debug=False):
+        self.timeout = timeout
+        self.retries = retries
+        self.debug = debug
+        self.nrf = None
+        self.command = [0, 50, 50]
+        self.control_mode = 1
+        self._running = False
 
-def initiate_nrf(to_print=False, retries=50):
-    # Initialize nRF24L01
-    if to_print:
-        print('-' * 40)
-        print('Initiating NRF')
-    nrf = None
-    attempt = 0
-    while not nrf and attempt < retries:
-        time.sleep(0.1)
-        try:
-            nrf = NRF24L01(spi, csn, ce, payload_size=8)  # Use default payload size
-        except (ValueError, OSError) as e:
-            attempt += 1
-            print("Failed to init:", e)
-
-    if not nrf:
-        print("Failed to initialize nRF24L01.")
-        return None
-    nrf.open_tx_pipe(b'1Node')  # Transmitter address
-    nrf.open_rx_pipe(1, b'2Node')  # Receiver address
-    nrf.set_channel(76)  # Set RF communication channel
-    nrf.start_listening()  # Start listening for messages
-
-    if to_print:
-        print('NRF initiated')
-        print('-' * 40)
-
-    return nrf
-
-
-def get_rc_command(nrf, timeout=40, to_print=True, delay=0.01):
-    """
-    Wait for a remote control command from the nRF module.
-    Returns the received signal or None if no signal is received within the timeout.
-    """
-    retries = 0
-    while retries < timeout:
-        utime.sleep(delay)  # Small delay to avoid tight polling
-        if nrf.any():  # Check if data is available
+    def initiate_nrf(self, attempts=50):
+        if self.debug:
+            print('-' * 40)
+            print('Initiating NRF...')
+        nrf = None
+        for attempt in range(attempts):
+            time.sleep(0.1)
             try:
-                data = None
-                data = nrf.recv()  # Expecting a 3-byte payload
-                d1, d2, d3 = data[0], data[1], data[2]
-                signal = data
-                if to_print:
-                    print(f"Received signal: {signal}, {d1=} {d2=}, {d3=}")
-
-                if signal:
-                    return [d1, d2, d3]
-                else:
-                    print("Invalid signal received, ignoring.")
+                nrf = NRF24L01(spi, csn, ce, payload_size=8)
+                break
             except (ValueError, OSError) as e:
-                print(f"Error receiving message: {e}")
-        else:
-            retries += 1
-            print('Unsuccessful attempt:', retries)
+                if self.debug:
+                    print("NRF init failed:", e)
 
-    print("Command timeout: No signal received.")
-    return None
+        if not nrf:
+            print("Failed to initialize nRF24L01.")
+            return None
 
+        nrf.open_tx_pipe(b'1Node')
+        nrf.open_rx_pipe(1, b'2Node')
+        nrf.set_channel(76)
+        nrf.start_listening()
 
-def check_signal():
-    while True:
-        time.sleep(0.2)
-        nrf = initiate_nrf()
-        print(get_rc_command(nrf))
+        if self.debug:
+            print('NRF ready')
+            print('-' * 40)
 
-# check_signal()
+        return nrf
 
+    def _listen_loop(self):
+        self.nrf = self.initiate_nrf()
+        i = 0
+        start_time = time.time()
 
+        while self.nrf is None:
+            print("No nRF module detected. Retrying...")
+            self.command = [0, 50, 50]
+            self.nrf = self.initiate_nrf()
+            i += 1
+            if i >= 3:
+                print('Restarting system...')
+                machine.reset()
+
+        self._running = True
+        while time.time() - start_time < self.timeout:
+            try:
+                signal = self._get_rc_command()
+                if signal:
+                    self.command = signal
+                    start_time = time.time()
+                else:
+                    print("No valid signal received. Using default.")
+                    self.command = [0, 50, 50]
+            except (ValueError, OSError, AssertionError) as e:
+                print(f"Error in signal loop: {e}")
+                utime.sleep(0.003)
+                self.nrf = self.initiate_nrf()
+                if self.nrf is None:
+                    print("No nRF. Restarting...")
+                    self.command = [0, 50, 50]
+                    machine.reset()
+
+        self._running = False
+
+    def _get_rc_command(self, delay=0.01, max_retries=40):
+        retries = 0
+        while retries < max_retries:
+            utime.sleep(delay)
+            if self.nrf.any():
+                try:
+                    data = self.nrf.recv()
+                    if self.debug:
+                        print(f"Received: {data}")
+                    if data and len(data) >= 3:
+                        return [data[0], data[1], data[2]]
+                except Exception as e:
+                    print(f"Receive error: {e}")
+            else:
+                retries += 1
+                if self.debug:
+                    print(f"No data. Retry {retries}")
+        return None
+
+    def get_command(self):
+        return self.command
+
+    def start(self):
+        _thread.start_new_thread(self._listen_loop, ())
+
+# Global instance
+signal_receiver = SignalReceiver(debug=True)
+
+def start_signal_listener():
+    signal_receiver.start()
+
+def get_latest_command():
+    return signal_receiver.get_command()
+
+def get_control_mode():
+    return signal_receiver.control_mode
 
