@@ -8,8 +8,8 @@ rb = Pin(5, Pin.OUT)
 lf = Pin(6, Pin.OUT)
 lb = Pin(7, Pin.OUT)
 
-ENA = PWM(Pin(22))
-ENB = PWM(Pin(21))  # PWM pin for speed control (ENA)
+ENA = PWM(Pin(3))
+ENB = PWM(Pin(8))  # PWM pin for speed control (ENA)
 
 # Set PWM Frequency
 ENA.freq(1000)  # Set frequency to 1kHz
@@ -31,7 +31,7 @@ def set_speeds(speed_a, speed_b):
     ENB.duty_u16(int(speed_b * 65535 / 100))
 
 
-def set_right_speed(speed, to_print=True):
+def set_right_speed(speed):
     if speed < 0:
         speed *= -1
     base_speed = 80
@@ -40,12 +40,10 @@ def set_right_speed(speed, to_print=True):
     if res > 100:
         res = 100
 
-    ENA.duty_u16(int(res * 65535 / 100))
-    if to_print:
-        print(f'ENA duty: {int(res * 65535 / 100)}')
+    ENA.duty_u16(int(speed * 65535 / 100))
 
 
-def set_left_speed(speed, to_print=True):
+def set_left_speed(speed):
     if speed < 0:
         speed *= -1
     base_speed = 80
@@ -54,9 +52,7 @@ def set_left_speed(speed, to_print=True):
     if res > 100:
         res = 100
 
-    ENB.duty_u16(int(res * 65535 / 100))
-    if to_print:
-        print(f'ENB duty: {int(res * 65535 / 100)}')
+    ENB.duty_u16(int(speed * 65535 / 100))
 
 
 set_speed(base_speed)

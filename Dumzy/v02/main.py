@@ -6,7 +6,6 @@ from car import *
 from dumzy_listner import *
 from arm import *
 import _thread
-import machine
 
 # from HC_SR04_distance_sensor import *
 
@@ -148,7 +147,7 @@ def controlled_movement1():
             else:
                 set_speed(BASE_SPEED / TURNING_SLOWDOWN)
 
-            trn = {0: 0, 1: 2, 2: 8, 3: 4, 4: 6, 5: 5}
+            trn = {0: 0, 1: 2, 2: 8, 3: 4, 4: 6}
             arm_cmd = trn[command0]
             control_mode = arm_control(servos, control_mode, arm_cmd)
 
@@ -212,7 +211,8 @@ def controlled_movement1():
         utime.sleep(0.1)  # Pause before retrying
 
 
-def signal_thread(to_print=True, timeout=600, retries=2):
+
+def signal_thread(to_print=True, timeout=300, retries=2):
     time.sleep(1)
     global command
     global control_mode
@@ -220,25 +220,20 @@ def signal_thread(to_print=True, timeout=600, retries=2):
     control_mode = 1
     command = [0, 50, 50]
     start_time = time.time()
-    nrf = initiate_nrf(retries=5)
-    i = 0
+    nrf = initiate_nrf(retries=500)
     while nrf is None:
         command = [0, 50, 50]
         print("No nRF module detected. Retrying...")
-        nrf = initiate_nrf(retries=3)
-        i += 1
-        if i == 3:
-            print('Restarting')
-            machine.reset()
+        nrf = initiate_nrf(retries=500)
 
     while time.time() - start_time < timeout:
         try:
-            signal = get_rc_command(nrf, delay=0.002)
+            signal = get_rc_command(nrf, delay=0.04)
             attempt = 0
             while signal is None and attempt < retries:
-                # nrf = initiate_nrf()
+                #nrf = initiate_nrf()
                 print("No initial command. Retrying...")
-                signal = get_rc_command(nrf, delay=0.002)
+                signal = get_rc_command(nrf, delay=0.04)
                 attempt += 1
 
             if to_print:
@@ -253,23 +248,19 @@ def signal_thread(to_print=True, timeout=600, retries=2):
         except (ValueError, OSError, AssertionError) as e:
             print(f"Error in controlled movement: {e}")
             command = [0, 50, 50]
-            utime.sleep(0.003)  # Pause before retrying
-            nrf = initiate_nrf(retries=3)
-            # while nrf is None:
-            if nrf is None:
+            utime.sleep(0.05)  # Pause before retrying
+            nrf = initiate_nrf(retries=500)
+            while nrf is None:
                 command = [0, 50, 50]
                 print("No nRF module detected. Retrying...")
-                # nrf = initiate_nrf(retries=500)
-                machine.reset()
+                nrf = initiate_nrf(retries=500)
 
 
 def motors_thread(to_print=True, timeout=300):
     time.sleep(2)
-    print((('-' * 30) + '\n') * 100)
     global command
     global control_mode
 
-    print((('=' * 30) + '\n') * 100)
     start_time = time.time()
     while time.time() - start_time < timeout:
         print(f'rolling {time.time() - start_time}')
@@ -301,11 +292,11 @@ def motors_thread(to_print=True, timeout=300):
             # Scale inputs
             y -= 50
             x -= 50
-            left_vector = y + x  # Adjust to consider both x and y.
+            left_vector  = y + x  # Adjust to consider both x and y.
             right_vector = y - x
 
-            set_left_speed(left_vector * 2)
-            set_right_speed(right_vector * 2)
+            set_left_speed(left_vector*2)
+            set_right_speed(right_vector*2)
 
             stop()
             if left_vector > 0:
@@ -317,6 +308,7 @@ def motors_thread(to_print=True, timeout=300):
             if right_vector < 0:
                 right_backward()
 
+
         control_mode = arm_control(servos, control_mode, b)
         time.sleep(0.05)
 
@@ -327,15 +319,10 @@ def control_loop(to_print=True):
     motors_thread()
 
 
-# set_left_speed(75)
-# set_right_speed(75)
-# move_forward()
 stop()
 time.sleep(3)
-# move_backward()
 
 if __name__ == '__main__':
-    control_loop(to_print=True)
-
+    control_loop(to_print=False)
 
 

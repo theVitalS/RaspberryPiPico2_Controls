@@ -1,10 +1,11 @@
 from machine import Pin, SPI
 from nrf24l01 import NRF24L01
+from joystick import get_joystick_signal
 import utime
 
 # nRF24L01 setup for sender
-ce = Pin(16, Pin.OUT)   # CE -> GP13
-csn = Pin(17, Pin.OUT)  # CSN -> GP14
+ce = Pin(7, Pin.OUT)   # CE -> GP13
+csn = Pin(6, Pin.OUT)  # CSN -> GP14
 
 spi = SPI(1, baudrate=5000000, polarity=0, phase=0,
           sck=Pin(14), mosi=Pin(15), miso=Pin(12))
@@ -52,7 +53,10 @@ def send_message(message):
         print(f"Send failed! Error: {e}")
 
 while True:
-    number_to_send = read_input_pins()  # Determine the number to send
-    send_message(str(number_to_send))  # Convert to string and send
-    utime.sleep(0.001)  # Send messages every 500ms
+    d1 = read_input_pins()  # Determine the number to send
+    d2 = get_joystick_signal()
+    signal = str(d1) + str(d2)
+    print(f'{signal=}  {d1=}  {d2=}')
+    send_message(signal)  # Convert to string and send
+    utime.sleep(0.01)  #
 
