@@ -8,8 +8,8 @@ rb = Pin(5, Pin.OUT)
 lf = Pin(6, Pin.OUT)
 lb = Pin(7, Pin.OUT)
 
-ENA = PWM(Pin(22))
-ENB = PWM(Pin(21))  # PWM pin for speed control (ENA)
+ENA = PWM(Pin(3))
+ENB = PWM(Pin(8))  # PWM pin for speed control (ENA)
 
 # Set PWM Frequency
 ENA.freq(1000)  # Set frequency to 1kHz
@@ -183,5 +183,6 @@ def test3(x):
         stop()
         time.sleep(1)
         i += 1
+
 
 
