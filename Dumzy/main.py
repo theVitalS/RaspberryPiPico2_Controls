@@ -1,40 +1,40 @@
-from machine import Pin, PWM
+from machine import time_pulse_us
 import time
-from car import *
 from dumzy_listner import start_signal_listener, get_latest_command
 from arm import *
+from car import MotorController
 import _thread
 
-DETAILED_CONTROL = True
+motor = MotorController(detailed_control=True, debug=True)
 
-def motors_thread(to_print=True, timeout=300):
+def motors_thread(timeout=300):
     time.sleep(2)
     print((('-' * 30) + '\n') * 100)
 
     control_mode = 1
     print((('=' * 30) + '\n') * 100)
     start_time = time.time()
+
     while time.time() - start_time < timeout:
-        print(f'rolling {time.time() - start_time}')
-        b, y, x = get_latest_command()
+        command = get_latest_command()
+        b, y, x = command
 
         if not (b == 0 and x == 50 and y == 50):
             start_time = time.time()
 
-        print(f'Rolling for: {b=}, {y=}, {x=}')
-        move(x, y, DETAILED_CONTROL)
-
+        print(f'[Main] Command received: {b=}, {y=}, {x=}')
+        motor.move(x, y)
         control_mode = arm_control(servos, control_mode, b)
         time.sleep(0.05)
 
-def control_loop(to_print=True):
-    stop()
+def control_loop():
+    motor.stop()
     start_signal_listener()
     motors_thread()
 
-stop()
+motor.stop()
 time.sleep(3)
 
 if __name__ == '__main__':
-    control_loop(to_print=True)
+    control_loop()
 
