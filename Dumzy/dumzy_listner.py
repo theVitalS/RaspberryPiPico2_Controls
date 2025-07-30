@@ -4,11 +4,11 @@ import time
 import utime
 
 #  nRF24L01 setup for sender
-ce = Pin(11, Pin.OUT)  # CE -> GP13
-csn = Pin(10, Pin.OUT)  # CSN -> GP14
+ce = Pin(9, Pin.OUT)  # CE -> GP13
+csn = Pin(13, Pin.OUT)  # CSN -> GP14
 
-spi = SPI(1, baudrate=5000000, polarity=0, phase=0,
-          sck=Pin(14), mosi=Pin(15), miso=Pin(12))
+spi = SPI(1, #baudrate=5000000, polarity=0, phase=0,
+          sck=Pin(10), mosi=Pin(11), miso=Pin(12))
 
 # Set CE and CSN to their default states
 ce.value(0)
@@ -23,6 +23,7 @@ def initiate_nrf(to_print=False, retries=50):
     nrf = None
     attempt = 0
     while not nrf and attempt < retries:
+        time.sleep(0.1)
         try:
             nrf = NRF24L01(spi, csn, ce, payload_size=8)  # Use default payload size
         except (ValueError, OSError) as e:
@@ -44,7 +45,7 @@ def initiate_nrf(to_print=False, retries=50):
     return nrf
 
 
-def get_rc_command0(nrf):
+def get_rc_command099(nrf):
     k = 0
     # print('Getting command')
     while True:
@@ -127,5 +128,6 @@ def check_signal():
         print(get_rc_command(nrf))
 
 # check_signal()
+
 
 
