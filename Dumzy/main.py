@@ -75,46 +75,12 @@ def motors_thread(to_print=True, timeout=300):
 
         b, y, x = command
 
-        if x == 101 and y == 101:
-            b = 5
-            x = 50
-            y = 50
-
         if not (b == 0 and x == 50 and y == 50):
             start_time = time.time()
 
         print(f'Rolling for: {b=}, {y=}, {x=}')
 
-        if not DETAILED_CONTROL:
-            if x < 50:
-                turn_left()
-            elif x > 50:
-                turn_right()
-            elif y > 50:
-                move_forward()
-            elif y < 50:
-                move_backward()
-            else:
-                stop()
-        else:
-            # Scale inputs
-            y -= 50
-            x -= 50
-            left_vector = y + x  # Adjust to consider both x and y.
-            right_vector = y - x
-
-            set_left_speed(left_vector * 2)
-            set_right_speed(right_vector * 2)
-
-            stop()
-            if left_vector > 0:
-                left_forward()
-            if left_vector < 0:
-                left_backward()
-            if right_vector > 0:
-                right_forward()
-            if right_vector < 0:
-                right_backward()
+        move(x, y, DETAILED_CONTROL)
 
         control_mode = arm_control(servos, control_mode, b)
         time.sleep(0.05)
