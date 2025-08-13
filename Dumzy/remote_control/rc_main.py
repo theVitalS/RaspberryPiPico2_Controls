@@ -112,6 +112,7 @@ while True:
     except OSError as e:
         print(f'!!!!!!!!!!!!!!!!!!We are catching it  - {at=}  -  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         at += 1
+        utime.sleep(0.1)
         if at > 10 and to_restart:
             print('=' * 40)
             print('=' * 40)
@@ -119,6 +120,7 @@ while True:
             print('=' * 40)
             print('=' * 40)
             machine.reset()
+
 
     utime.sleep(0.001)  # Shorter delay
 
