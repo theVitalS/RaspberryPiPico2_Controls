@@ -14,6 +14,7 @@ def motors_thread(timeout=300):
     control_mode = 1
     print((('=' * 30) + '\n') * 100)
     start_time = time.time()
+    lsst_switch = start_time
 
     while time.time() - start_time < timeout:
         command = get_latest_command()
@@ -24,7 +25,13 @@ def motors_thread(timeout=300):
 
         print(f'[Main] Command received: {b=}, {y=}, {x=}')
         motor.move(x, y)
-        control_mode = arm_control(servos, control_mode, b)
+        if b != 5:
+            arm_control(servos, control_mode, b)
+        elif time.time() - lsst_switch > 1:
+            control_mode *= -1
+            lsst_switch = time.time()
+            print(f'[Main] Control mode switched: {control_mode}')
+
         time.sleep(0.05)
 
 def control_loop():

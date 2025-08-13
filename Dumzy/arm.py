@@ -47,19 +47,16 @@ class Servo:
             self.set_angle(self.current_angle)
 
 
-servo0 = Servo(pin_id=16, min_angle=0, max_angle=180, current_angle=90, )
-servo1 = Servo(pin_id=17, min_angle=10, max_angle=150, current_angle=0)
-servo2 = Servo(pin_id=18, min_angle=60, max_angle=180, current_angle=120)
-servo3 = Servo(pin_id=19, min_angle=25, max_angle=44, current_angle=30)
+servo0 = Servo(pin_id=17, min_angle=0, max_angle=180, current_angle=90, )
+servo1 = Servo(pin_id=16, min_angle=10, max_angle=150, current_angle=0)
+servo2 = Servo(pin_id=14, min_angle=60, max_angle=180, current_angle=120)
+servo3 = Servo(pin_id=15, min_angle=25, max_angle=44, current_angle=30)
 
 
 servos = [servo0, servo1, servo2, servo3]
 
 
 def arm_control(servos, control_mode, signal):
-    if signal == 5:
-        control_mode *= -1
-        return control_mode
 
     # dirs = {1: [-1, -1], 2: [0, -1], 3: [1, -1], 4: [-1, 0], 6: [1, 0], 7: [-1, 1], 8: [0, 1], 9: [1, 1], None: [0, 0], 0: [0, 0]}
     dirs = {None: [0, 0], 0: [0, 0], 1: [1, 0], 2: [-1, 0], 3: [0, -1], 4: [0, 1]}
@@ -78,7 +75,6 @@ def arm_control(servos, control_mode, signal):
         servos[0].move(x * a)
         servos[3].move(y * a)
 
-    return control_mode
 
 
 def check_arm():
