@@ -1,24 +1,20 @@
 from machine import time_pulse_us
 import time
+import _thread
 from dumzy_listner import start_signal_listener, get_latest_command
 from arm import *
 from car import MotorController
-import _thread
+from utils import log_event, safe_reboot
 
 motor = MotorController(detailed_control=True, debug=True)
 
 def motors_thread(timeout=300):
-    time.sleep(2)
-    print((('-' * 30) + '\n') * 100)
-
     control_mode = 1
-    print((('=' * 30) + '\n') * 100)
     start_time = time.time()
-    lsst_switch = start_time
+    last_switch = start_time
 
     while time.time() - start_time < timeout:
-        command = get_latest_command()
-        b, y, x = command
+        b, y, x = get_latest_command()
 
         if not (b == 0 and x == 50 and y == 50):
             start_time = time.time()
@@ -27,21 +23,24 @@ def motors_thread(timeout=300):
         motor.move(x, y)
         if b != 5:
             arm_control(servos, control_mode, b)
-        elif time.time() - lsst_switch > 1:
+        elif time.time() - last_switch > 1:
             control_mode *= -1
-            lsst_switch = time.time()
+            last_switch = time.time()
             print(f'[Main] Control mode switched: {control_mode}')
 
-        time.sleep(0.05)
+        time.sleep(0.01)
 
-def control_loop():
-    motor.stop()
-    start_signal_listener()
-    motors_thread()
 
-motor.stop()
-time.sleep(3)
+def main():
+    log_event("Starting", "MAIN", delims=2)
+    try:
+        motor.stop()
+        time.sleep(2)
+        start_signal_listener()
+        motors_thread()
+        log_event("Robot finished run due to inactivity.", "MAIN")
+    except Exception as e:
+        safe_reboot("Main loop exception", prefix="MAIN", error=e)
 
 if __name__ == '__main__':
-    control_loop()
-
+    main()
