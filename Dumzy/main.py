@@ -6,7 +6,7 @@ from arm import *
 from car import MotorController
 from utils import log_event, safe_reboot
 
-motor = MotorController(detailed_control=True, debug=True)
+motor = MotorController(detailed_control=True, debug=False)
 
 def motors_thread(timeout=300):
     control_mode = 1
@@ -35,7 +35,7 @@ def main():
     log_event("Starting", "MAIN", delims=2)
     try:
         motor.stop()
-        time.sleep(2)
+        time.sleep(1)
         start_signal_listener()
         motors_thread()
         log_event("Robot finished run due to inactivity.", "MAIN")

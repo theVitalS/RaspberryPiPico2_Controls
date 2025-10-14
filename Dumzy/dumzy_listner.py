@@ -27,6 +27,7 @@ class SignalReceiver:
         self.nrf = None
         self.command = [0, 50, 50]
         self._running = False
+        self.delay = 0.01
 
     def initiate_nrf(self, attempts=50):
         self.nrf = None
@@ -36,7 +37,7 @@ class SignalReceiver:
                 break
             except (ValueError, OSError) as e:
                 log_event(f"NRF init attempt {attempt+1} failed", "NRF", error=e, to_print=self.debug)
-            utime.sleep(0.01)
+            utime.sleep(self.delay)
 
         if not self.nrf:
             safe_reboot(f"Failed to initialize nRF24L01 after {attempts} attempts.", "NRF")
@@ -46,7 +47,7 @@ class SignalReceiver:
             self.nrf.open_rx_pipe(1, b'2Node')
             self.nrf.set_channel(76)
             self.nrf.start_listening()
-            log_event("NRF module initialized and listening.", "NRF")
+            log_event("NRF module initialized and listening.", "NRF", to_print=self.debug)
         except Exception as e:
             safe_reboot(f"Error configuring NRF", "NRF", error=e)
 
@@ -54,11 +55,11 @@ class SignalReceiver:
 
     def _listen_loop(self):
         """Continuously listens for radio commands with exception safety."""
+        time.sleep(1.5) #Crucial to proper thread starting
         try:
             start_time = time.time()
-
-            self._running = True
-            log_event("NRF listening loop started.", "NRF")
+            self.initiate_nrf()
+            log_event("NRF listening loop started.", "NRF", to_print=self.debug)
 
             while time.time() - start_time < self.timeout:
                 try:
@@ -72,7 +73,7 @@ class SignalReceiver:
                         self.command = [0, 50, 50]
                 except (ValueError, OSError, AssertionError) as e:
                     log_event(f"Error in signal loop: {e}", "NRF", to_print=True)
-                    utime.sleep(0.01)
+                    utime.sleep(self.delay)
                     self.initiate_nrf()
 
 
@@ -80,12 +81,13 @@ class SignalReceiver:
             self._running = False
 
         except Exception as e:
+            self.command = [0, 50, 50]
             safe_reboot("Fatal error in _listen_loop", prefix="NRF", error=e)
 
-    def _get_rc_command(self, delay=0.01, max_retries=50):
+    def _get_rc_command(self, max_retries=50):
         retries = 0
         while retries < max_retries:
-            utime.sleep(delay)
+            utime.sleep(self.delay)
             if self.nrf.any():
                 try:
                     data = self.nrf.recv()
@@ -104,13 +106,17 @@ class SignalReceiver:
         return self.command
 
     def start(self):
-        log_event("NRF listener thread starting.", "NRF")
+        if self._running:
+            log_event("NRF listener already running.", "NRF", to_print=self.debug)
+            return
+
         try:
-            self.initiate_nrf()
+            log_event("NRF listener thread starting.", "NRF", to_print=self.debug)
+            self._running = True
             _thread.start_new_thread(self._listen_loop, ())
         except Exception as e:
             safe_reboot("Failed to start NRF listener thread", prefix="NRF", error=e)
-        log_event("NRF listener thread started.", "NRF")
+        log_event("NRF listener thread started.", "NRF", to_print=self.debug)
 
 
 signal_receiver = SignalReceiver(debug=True)
@@ -121,4 +127,3 @@ def start_signal_listener():
 
 def get_latest_command():
     return signal_receiver.get_command()
-
