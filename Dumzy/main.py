@@ -19,14 +19,16 @@ def motors_thread(timeout=300):
         if not (b == 0 and x == 50 and y == 50):
             start_time = time.time()
 
-        print(f'[Main] Command received: {b=}, {y=}, {x=}')
+        if motor.debug:
+            print(f'[Main] Command received: {b=}, {y=}, {x=}')
         motor.move(x, y)
         if b != 5:
             arm_control(servos, control_mode, b)
         elif time.time() - last_switch > 1:
             control_mode *= -1
             last_switch = time.time()
-            print(f'[Main] Control mode switched: {control_mode}')
+            if motor.debug:
+                print(f'[Main] Control mode switched: {control_mode}')
 
         time.sleep(0.01)
 

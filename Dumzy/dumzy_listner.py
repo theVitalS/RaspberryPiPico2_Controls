@@ -28,12 +28,14 @@ class SignalReceiver:
         self.command = [0, 50, 50]
         self._running = False
         self.delay = 0.01
+        self.max_retries = 50
+        self.payload_size = 3
 
     def initiate_nrf(self, attempts=50):
         self.nrf = None
         for attempt in range(attempts):
             try:
-                self.nrf = NRF24L01(spi, csn, ce, payload_size=8)
+                self.nrf = NRF24L01(spi, csn, ce, payload_size=self.payload_size)
                 break
             except (ValueError, OSError) as e:
                 log_event(f"NRF init attempt {attempt+1} failed", "NRF", error=e, to_print=self.debug)
@@ -55,6 +57,7 @@ class SignalReceiver:
 
     def _listen_loop(self):
         """Continuously listens for radio commands with exception safety."""
+        log_event("NRF listening loop started.", "NRF", to_print=self.debug)
         time.sleep(1.5) #Crucial to proper thread starting
         try:
             start_time = time.time()
@@ -84,9 +87,9 @@ class SignalReceiver:
             self.command = [0, 50, 50]
             safe_reboot("Fatal error in _listen_loop", prefix="NRF", error=e)
 
-    def _get_rc_command(self, max_retries=50):
+    def _get_rc_command(self):
         retries = 0
-        while retries < max_retries:
+        while retries < self.max_retries:
             utime.sleep(self.delay)
             if self.nrf.any():
                 try:
@@ -99,7 +102,7 @@ class SignalReceiver:
                     log_event(f"Receive error: {e}", "NRF", to_print=True)
             else:
                 retries += 1
-        log_event(f"No data received after {max_retries} retries.", "NRF", to_print=self.debug)
+        log_event(f"No data received after {self.max_retries} retries.", "NRF", to_print=self.debug)
         return None
 
     def get_command(self):
