@@ -1,6 +1,6 @@
 from machine import time_pulse_us
 import time
-import _thread
+import _thread, gc
 from dumzy_listner import start_signal_listener, get_latest_command
 from arm import *
 from car import MotorController
@@ -45,4 +45,5 @@ def main():
         safe_reboot("Main loop exception", prefix="MAIN", error=e)
 
 if __name__ == '__main__':
+    gc.collect()
     main()

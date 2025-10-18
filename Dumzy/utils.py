@@ -22,7 +22,10 @@ def log_event(message, prefix="SYS", error=None, delims=0, to_print=False):
             f.write(f"{('-'*25+'\n')*delims}")
 
         if to_print:
-            print(f"{message}  {error}")
+            if error:
+                print(f"{message} / Error:{error}")
+            else:
+                print(f"{message}")
 
     except Exception as e:
         print(f"[Logging Error] {e}")
