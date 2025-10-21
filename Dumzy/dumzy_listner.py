@@ -4,6 +4,7 @@ import time
 import utime
 import machine
 import _thread
+from utils import log_event
 
 # SPI and NRF24L01 setup
 ce = Pin(9, Pin.OUT)  # CE -> GP13
@@ -25,31 +26,30 @@ class SignalReceiver:
         self._running = False
 
     def initiate_nrf(self, attempts=50):
-        if self.debug:
-            print('-' * 40)
-            print('Initiating NRF...')
+        log_event('Initiating NRF...', 'NRF', to_print=self.debug)
         nrf = None
         for attempt in range(attempts):
             time.sleep(0.1)
             try:
                 nrf = NRF24L01(spi, csn, ce, payload_size=3)
                 break
-            except (ValueError, OSError) as e:
-                if self.debug:
-                    print("NRF init failed:", e)
+            except Exception as e:
+                log_event("NRF init failed:", 'NRF', to_print=True, error=e)
 
         if not nrf:
-            print("Failed to initialize nRF24L01.")
+            log_event("NRF24L01 is still None after init", 'NRF', to_print=self.debug)
             return None
 
-        nrf.open_tx_pipe(b'1Node')
-        nrf.open_rx_pipe(1, b'2Node')
-        nrf.set_channel(76)
-        nrf.start_listening()
+        try:
+            nrf.open_tx_pipe(b'1Node')
+            nrf.open_rx_pipe(1, b'2Node')
+            nrf.set_channel(76)
+            nrf.start_listening()
+        except Exception as e:
+            log_event("Failed to set-up initiated NRF", "NRF", error=e, to_print=True)
+            return None
 
-        if self.debug:
-            print('NRF ready')
-            print('-' * 40)
+        log_event('NRF ready', 'NRF', to_print=self.debug)
 
         return nrf
 
@@ -59,30 +59,33 @@ class SignalReceiver:
         start_time = time.time()
 
         while self.nrf is None:
-            print("No nRF module detected. Retrying...")
+            log_event("No NRF module detected. Retrying...", 'NRF', to_print=self.debug)
             self.command = [0, 50, 50]
             self.nrf = self.initiate_nrf()
             i += 1
             if i >= 3:
-                print('Restarting system...')
+                log_event(f'No NRF after {i} attempts. Restarting system...', 'NRF', to_print=True)
                 machine.reset()
 
         self._running = True
+        last_signal = None
         while time.time() - start_time < self.timeout:
-            try:
+            try:   #Reconsider whether this try is needed
                 signal = self._get_rc_command()
                 if signal:
                     self.command = signal
                     start_time = time.time()
+                    if self.debug and signal != last_signal:
+                        print(f'Received signal: {signal}')
+                        last_signal = signal
                 else:
-                    print("No valid signal received. Using default.")
                     self.command = [0, 50, 50]
-            except (ValueError, OSError, AssertionError) as e:
-                print(f"Error in signal loop: {e}")
+            except (ValueError, OSError, AssertionError) as e:   #Reconsider whether this except is needed
+                log_event(f"Error in signal loop", 'NRF', to_print=self.debug, error=e)
                 utime.sleep(0.003)
                 self.nrf = self.initiate_nrf()
                 if self.nrf is None:
-                    print("No nRF. Restarting...")
+                    log_event("No nRF. Restarting...", 'NRF', to_print=self.debug)
                     self.command = [0, 50, 50]
                     machine.reset()
 
@@ -90,21 +93,22 @@ class SignalReceiver:
 
     def _get_rc_command(self, delay=0.01, max_retries=40):
         retries = 0
-        while retries < max_retries:
+        while retries <= max_retries:
             utime.sleep(delay)
-            if self.nrf.any():
-                try:
+            try:
+                if self.nrf.any():
                     data = self.nrf.recv()
-                    if self.debug:
-                        print(f"Received: {data}")
                     if data and len(data) >= 3:
                         return [data[0], data[1], data[2]]
-                except Exception as e:
-                    print(f"Receive error: {e}")
-            else:
-                retries += 1
-                if self.debug:
-                    print(f"No data. Retry {retries}")
+                else:
+                    retries += 1
+            except Exception as e:
+                log_event(f"Receive error in _get_rc_command", 'NRF', to_print=self.debug, error=e)
+
+        if self.debug:
+            t = time.localtime()
+            timestamp = f"{t[3]:02d}:{t[4]:02d}:{t[5]:02d}"
+            print(f"[{timestamp}] No data. Retry {retries-1}")
         return None
 
     def get_command(self):
@@ -112,7 +116,10 @@ class SignalReceiver:
 
     def start(self):
         time.sleep(2)
-        _thread.start_new_thread(self._listen_loop, ())
+        try:
+            _thread.start_new_thread(self._listen_loop, ())
+        except Exception as e:
+            log_event('Failed to start thread', 'NRF', to_print=True, error=e)
 
 # Global instance
 signal_receiver = SignalReceiver(debug=True)
