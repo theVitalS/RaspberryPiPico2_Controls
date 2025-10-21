@@ -68,14 +68,17 @@ class SignalReceiver:
                 machine.reset()
 
         self._running = True
+        last_signal = None
         while time.time() - start_time < self.timeout:
             try:
                 signal = self._get_rc_command()
                 if signal:
                     self.command = signal
                     start_time = time.time()
+                    if self.debug and signal != last_signal:
+                        print(f'Received signal: {signal}')
+                        last_signal = signal
                 else:
-                    print("No valid signal received. Using default.")
                     self.command = [0, 50, 50]
             except (ValueError, OSError, AssertionError) as e:
                 print(f"Error in signal loop: {e}")
@@ -90,21 +93,22 @@ class SignalReceiver:
 
     def _get_rc_command(self, delay=0.01, max_retries=40):
         retries = 0
-        while retries < max_retries:
+        while retries <= max_retries:
             utime.sleep(delay)
             if self.nrf.any():
                 try:
                     data = self.nrf.recv()
-                    if self.debug:
-                        print(f"Received: {data}")
                     if data and len(data) >= 3:
                         return [data[0], data[1], data[2]]
                 except Exception as e:
                     print(f"Receive error: {e}")
             else:
                 retries += 1
-                if self.debug:
-                    print(f"No data. Retry {retries}")
+
+        if self.debug:
+            t = time.localtime()
+            timestamp = f"{t[3]:02d}:{t[4]:02d}:{t[5]:02d}"
+            print(f"[{timestamp}] No data. Retry {retries-1}")
         return None
 
     def get_command(self):

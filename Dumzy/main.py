@@ -5,14 +5,12 @@ from arm import *
 from car import MotorController
 import _thread
 
-motor = MotorController(detailed_control=True, debug=True)
+motor = MotorController(detailed_control=True, debug=False)
 
 def motors_thread(timeout=300):
+    print('Motors thread started')
     time.sleep(2)
-    print((('-' * 30) + '\n') * 100)
-
     control_mode = 1
-    print((('=' * 30) + '\n') * 100)
     start_time = time.time()
     lsst_switch = start_time
 
@@ -23,14 +21,16 @@ def motors_thread(timeout=300):
         if not (b == 0 and x == 50 and y == 50):
             start_time = time.time()
 
-        print(f'[Main] Command received: {b=}, {y=}, {x=}')
+        if motor.debug:
+            print(f'[Main] Command received: {b=}, {y=}, {x=}')
         motor.move(x, y)
         if b != 5:
             arm_control(servos, control_mode, b)
         elif time.time() - lsst_switch > 1:
             control_mode *= -1
             lsst_switch = time.time()
-            print(f'[Main] Control mode switched: {control_mode}')
+            if motor.debug:
+                print(f'[Main] Control mode switched: {control_mode}')
 
         time.sleep(0.05)
 
